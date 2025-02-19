@@ -1,63 +1,60 @@
-(function() {
-  'use strict'
+(function () {
+  'use strict';
 
-  var $ = window.jQuery
-  var Waypoint = window.Waypoint
+  const { jQuery: $, Waypoint } = window;
 
-  /* http://imakewebthings.com/waypoints/shortcuts/sticky-elements */
-  function Sticky(options) {
-    this.options = $.extend({}, Waypoint.defaults, Sticky.defaults, options)
-    this.element = this.options.element
-    this.$element = $(this.element)
-    this.createWrapper()
-    this.createWaypoint()
-  }
+  class Sticky {
+    constructor(options) {
+      this.options = $.extend({}, Waypoint.defaults, Sticky.defaults, options);
+      this.element = this.options.element;
+      this.$element = $(this.element);
 
-  /* Private */
-  Sticky.prototype.createWaypoint = function() {
-    var originalHandler = this.options.handler
-
-    this.waypoint = new Waypoint($.extend({}, this.options, {
-      element: this.wrapper,
-      handler: $.proxy(function(direction) {
-        var shouldBeStuck = this.options.direction.indexOf(direction) > -1
-        var wrapperHeight = shouldBeStuck ? this.$element.outerHeight(true) : ''
-
-        this.$wrapper.height(wrapperHeight)
-        this.$element.toggleClass(this.options.stuckClass, shouldBeStuck)
-
-        if (originalHandler) {
-          originalHandler.call(this, direction)
-        }
-      }, this)
-    }))
-  }
-
-  /* Private */
-  Sticky.prototype.createWrapper = function() {
-    if (this.options.wrapper) {
-      this.$element.wrap(this.options.wrapper)
+      this.createWrapper();
+      this.createWaypoint();
     }
-    this.$wrapper = this.$element.parent()
-    this.wrapper = this.$wrapper[0]
-  }
 
-  /* Public */
-  Sticky.prototype.destroy = function() {
-    if (this.$element.parent()[0] === this.wrapper) {
-      this.waypoint.destroy()
-      this.$element.removeClass(this.options.stuckClass)
+    createWaypoint() {
+      const { handler, direction, stuckClass } = this.options;
+
+      this.waypoint = new Waypoint({
+        ...this.options,
+        element: this.wrapper,
+        handler: (directionTriggered) => {
+          const shouldBeStuck = direction.includes(directionTriggered);
+          this.$wrapper.height(shouldBeStuck ? this.$element.outerHeight(true) : '');
+          this.$element.toggleClass(stuckClass, shouldBeStuck);
+
+          if (typeof handler === 'function') {
+            handler.call(this, directionTriggered);
+          }
+        }
+      });
+    }
+
+    createWrapper() {
       if (this.options.wrapper) {
-        this.$element.unwrap()
+        this.$element.wrap(this.options.wrapper);
+      }
+      this.$wrapper = this.$element.parent();
+      this.wrapper = this.$wrapper[0];
+    }
+
+    destroy() {
+      if (this.$element.parent()[0] === this.wrapper) {
+        this.waypoint.destroy();
+        this.$element.removeClass(this.options.stuckClass);
+        if (this.options.wrapper) {
+          this.$element.unwrap();
+        }
       }
     }
+
+    static defaults = {
+      wrapper: '<div class="sticky-wrapper" />',
+      stuckClass: 'stuck',
+      direction: 'down right'
+    };
   }
 
-  Sticky.defaults = {
-    wrapper: '<div class="sticky-wrapper" />',
-    stuckClass: 'stuck',
-    direction: 'down right'
-  }
-
-  Waypoint.Sticky = Sticky
-}())
+  Waypoint.Sticky = Sticky;
+})();
