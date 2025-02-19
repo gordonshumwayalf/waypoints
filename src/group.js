@@ -1,105 +1,75 @@
-(function() {
-  'use strict'
+(function () {
+  'use strict';
 
-  function byTriggerPoint(a, b) {
-    return a.triggerPoint - b.triggerPoint
-  }
+  const groups = { vertical: {}, horizontal: {} };
+  const { Waypoint } = window;
 
-  function byReverseTriggerPoint(a, b) {
-    return b.triggerPoint - a.triggerPoint
-  }
+  class Group {
+    constructor({ name, axis }) {
+      this.name = name;
+      this.axis = axis;
+      this.id = `${name}-${axis}`;
+      this.waypoints = [];
+      this.triggerQueues = { up: [], down: [], left: [], right: [] };
 
-  var groups = {
-    vertical: {},
-    horizontal: {}
-  }
-  var Waypoint = window.Waypoint
+      groups[axis][name] = this;
+    }
 
-  /* http://imakewebthings.com/waypoints/api/group */
-  function Group(options) {
-    this.name = options.name
-    this.axis = options.axis
-    this.id = this.name + '-' + this.axis
-    this.waypoints = []
-    this.clearTriggerQueues()
-    groups[this.axis][this.name] = this
-  }
+    add(waypoint) {
+      this.waypoints.push(waypoint);
+    }
 
-  /* Private */
-  Group.prototype.add = function(waypoint) {
-    this.waypoints.push(waypoint)
-  }
+    clearTriggerQueues() {
+      this.triggerQueues = { up: [], down: [], left: [], right: [] };
+    }
 
-  /* Private */
-  Group.prototype.clearTriggerQueues = function() {
-    this.triggerQueues = {
-      up: [],
-      down: [],
-      left: [],
-      right: []
+    flushTriggers() {
+      Object.entries(this.triggerQueues).forEach(([direction, waypoints]) => {
+        const isReverse = direction === 'up' || direction === 'left';
+        waypoints.sort(isReverse ? (a, b) => b.triggerPoint - a.triggerPoint : (a, b) => a.triggerPoint - b.triggerPoint);
+
+        waypoints.forEach((waypoint, i) => {
+          if (waypoint.options.continuous || i === waypoints.length - 1) {
+            waypoint.trigger([direction]);
+          }
+        });
+      });
+
+      this.clearTriggerQueues();
+    }
+
+    next(waypoint) {
+      this.waypoints.sort((a, b) => a.triggerPoint - b.triggerPoint);
+      const index = this.waypoints.findIndex(wp => wp === waypoint);
+      return index !== -1 && index < this.waypoints.length - 1 ? this.waypoints[index + 1] : null;
+    }
+
+    previous(waypoint) {
+      this.waypoints.sort((a, b) => a.triggerPoint - b.triggerPoint);
+      const index = this.waypoints.findIndex(wp => wp === waypoint);
+      return index > 0 ? this.waypoints[index - 1] : null;
+    }
+
+    queueTrigger(waypoint, direction) {
+      this.triggerQueues[direction].push(waypoint);
+    }
+
+    remove(waypoint) {
+      this.waypoints = this.waypoints.filter(wp => wp !== waypoint);
+    }
+
+    first() {
+      return this.waypoints[0] || null;
+    }
+
+    last() {
+      return this.waypoints[this.waypoints.length - 1] || null;
+    }
+
+    static findOrCreate(options) {
+      return groups[options.axis][options.name] || new Group(options);
     }
   }
 
-  /* Private */
-  Group.prototype.flushTriggers = function() {
-    for (var direction in this.triggerQueues) {
-      var waypoints = this.triggerQueues[direction]
-      var reverse = direction === 'up' || direction === 'left'
-      waypoints.sort(reverse ? byReverseTriggerPoint : byTriggerPoint)
-      for (var i = 0, end = waypoints.length; i < end; i += 1) {
-        var waypoint = waypoints[i]
-        if (waypoint.options.continuous || i === waypoints.length - 1) {
-          waypoint.trigger([direction])
-        }
-      }
-    }
-    this.clearTriggerQueues()
-  }
-
-  /* Private */
-  Group.prototype.next = function(waypoint) {
-    this.waypoints.sort(byTriggerPoint)
-    var index = Waypoint.Adapter.inArray(waypoint, this.waypoints)
-    var isLast = index === this.waypoints.length - 1
-    return isLast ? null : this.waypoints[index + 1]
-  }
-
-  /* Private */
-  Group.prototype.previous = function(waypoint) {
-    this.waypoints.sort(byTriggerPoint)
-    var index = Waypoint.Adapter.inArray(waypoint, this.waypoints)
-    return index ? this.waypoints[index - 1] : null
-  }
-
-  /* Private */
-  Group.prototype.queueTrigger = function(waypoint, direction) {
-    this.triggerQueues[direction].push(waypoint)
-  }
-
-  /* Private */
-  Group.prototype.remove = function(waypoint) {
-    var index = Waypoint.Adapter.inArray(waypoint, this.waypoints)
-    if (index > -1) {
-      this.waypoints.splice(index, 1)
-    }
-  }
-
-  /* Public */
-  /* http://imakewebthings.com/waypoints/api/first */
-  Group.prototype.first = function() {
-    return this.waypoints[0]
-  }
-
-  /* Public */
-  /* http://imakewebthings.com/waypoints/api/last */
-  Group.prototype.last = function() {
-    return this.waypoints[this.waypoints.length - 1]
-  }
-
-  /* Private */
-  Group.findOrCreate = function(options) {
-    return groups[options.axis][options.name] || new Group(options)
-  }
-
-  Waypoint.Group = Group
-}())
+  Waypoint.Group = Group;
+})();
