@@ -1,39 +1,38 @@
-(function() {
-  'use strict'
+(function () {
+  'use strict';
 
-  var displayNoneMessage = [
-    'You have a Waypoint element with display none. For more information on ',
-    'why this is a bad idea read ',
-    'http://imakewebthings.com/waypoints/guides/debugging/#display-none'
-  ].join('')
-  var fixedMessage = [
-    'You have a Waypoint element with fixed positioning. For more ',
-    'information on why this is a bad idea read ',
-    'http://imakewebthings.com/waypoints/guides/debugging/#fixed-position'
-  ].join('')
+  const displayNoneMessage = `You have a Waypoint element with display: none. 
+For more information on why this is a bad idea, read:
+http://imakewebthings.com/waypoints/guides/debugging/#display-none`;
+
+  const fixedMessage = `You have a Waypoint element with fixed positioning. 
+For more information on why this is a bad idea, read:
+http://imakewebthings.com/waypoints/guides/debugging/#fixed-position`;
 
   function checkWaypointStyles() {
-    var originalRefresh = window.Waypoint.Context.prototype.refresh
-
-    window.Waypoint.Context.prototype.refresh = function() {
-      for (var axis in this.waypoints) {
-        for (var key in this.waypoints[axis]) {
-          var waypoint = this.waypoints[axis][key]
-          var style = window.getComputedStyle(waypoint.element)
-          if (!waypoint.enabled) {
-            continue
-          }
-          if (style && style.display === 'none') {
-            console.error(displayNoneMessage)
-          }
-          if (style && style.position === 'fixed') {
-            console.error(fixedMessage)
-          }
-        }
-      }
-      return originalRefresh.call(this)
+    if (!window.Waypoint || !window.Waypoint.Context) {
+      console.warn('Waypoint library is not loaded.');
+      return;
     }
+
+    const originalRefresh = window.Waypoint.Context.prototype.refresh;
+
+    window.Waypoint.Context.prototype.refresh = function () {
+      Object.values(this.waypoints).forEach(waypointGroup => {
+        Object.values(waypointGroup).forEach(waypoint => {
+          if (!waypoint.enabled) return;
+
+          const style = window.getComputedStyle(waypoint.element);
+          if (!style) return;
+
+          if (style.display === 'none') console.warn(displayNoneMessage);
+          if (style.position === 'fixed') console.warn(fixedMessage);
+        });
+      });
+
+      return originalRefresh.call(this);
+    };
   }
 
-  checkWaypointStyles()
-}())
+  checkWaypointStyles();
+})();
